@@ -296,5 +296,10 @@ bootskel.img: bootskel.S
 	ld -Ttext=0x7c00 -e start bootskel.o -o bootskellinked.o
 	objcopy -O binary bootskellinked.o bootskel.img
 
+bootsplash.img: bootsplash.S
+	as bootsplash.S -o bootsplash.o
+	ld -Ttext=0x7c00 -e start bootsplash.o -o bootsplashlinked.o
+	objcopy -O binary bootsplashlinked.o bootsplash.img
+	dd if=cover.raw of=bootsplash.img seek=1 bs=512 count=150
 
 .PHONY: dist-test dist
