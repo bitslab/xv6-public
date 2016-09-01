@@ -9,7 +9,7 @@ start:
 	movb $10,%dh
 	movb $0,%dl
 	movb $1,%al
-	movb $17,%cx
+	movb $17,%cl
 	lea hw,%bp
 	int $0x10
 
@@ -31,10 +31,15 @@ here:
 	jmp here
 .org 0x100
 DAP:
-	.byte 0x10,0x00,0x7d,0x00
-	.byte 0x00,0x00,0x00,0xa0
-	.byte 1,0,0,0,0,0,0,0
+	.byte 0x10,0x00
+        .word 0x007d
+	.word 0x0, 0xa000
+	.quad 1
 
+	// or
+	//       .byte 0x10,0x00,0x7d,0x00
+	//       .byte 0x00,0x00,0x00,0xa0
+	//       .byte 1,0,0,0,0,0,0,0
 hw: .string "xv6 @ UIC rocks!"
 
 .org 0x01fe
