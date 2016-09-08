@@ -2,6 +2,8 @@
 .globl start
 
 start:
+	movb %dl, bootdrive
+	
 	mov $0,%ax
 	mov %ax,%es
 	movb $0x13,%ah
@@ -23,7 +25,8 @@ start:
 	movw $0x7d00,%si
 	movw $0,%ax
 	movw %ax,%ds
-	movw $0x0080,%dx
+	movb $0x00,%dh
+	movb bootdrive,%dl
 	movw $0x4200,%ax
 	int $0x13
 
@@ -41,6 +44,7 @@ DAP:
 	//       .byte 0x00,0x00,0x00,0xa0
 	//       .byte 1,0,0,0,0,0,0,0
 hw: .string "xv6 @ UIC rocks!"
+bootdrive:	.byte 0x00
 
 .org 0x01fe
  .word 0xAA55
