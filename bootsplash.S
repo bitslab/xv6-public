@@ -2,49 +2,46 @@
 .globl start
 
 start:
-	movb %dl, bootdrive
-	
-	mov $0,%ax
-	mov %ax,%es
-	movb $0x13,%ah
-	movw $0x0f,%bx
-	movb $10,%dh
-	movb $0,%dl
-	movb $1,%al
-	movb $17,%cl
-	lea hw,%bp
-	int $0x10
+movb %dl, bdnr # save boot drive number in memory
 
-	movb $0,%ah
-	int $0x16
+# anyway those registers may have already been cleared.
+xorw %ax, %ax
+movw %ax, %ds # clear ds
+movw %ax, %es # clear es
 
-	movb $0x0,%ah
-	movb $0x13,%al
-	int $0x10
+movb $0x13, %ah # parameters for int 13h
+movb $1,    %al # write mode = 1
+movw $0x0f, %bx # bh = 0, bg = 0(black) fg = 15(white)
+movb $10,   %dh # the 10th row
+movb $0,    %dl # starts from the left
+movw $17,   %cx # length
+lea  hello, %bp # bp is the address of the string (es has been cleared)
+int  $0x10
 
-	movw $0x7d00,%si
-	movw $0,%ax
-	movw %ax,%ds
-	movb $0x00,%dh
-	movb bootdrive,%dl
-	movw $0x4200,%ax
-	int $0x13
+movb $0,    %ah
+int  $0x16      # wait for keyboard input
 
-here: 	
-	jmp here
-.org 0x100
+movb $0x0,  %ah
+movb $0x13, %al
+int  $0x10      # change to video mode
+
+movb $0x42, %ah
+movb bdnr,  %dl
+movw $DAP,  %si
+int  $0x13      # load image
+
+loop:
+jmp loop
+
 DAP:
-	.byte 0x10,0x00
-        .word 0x007d
-	.word 0x0, 0xa000
-	.quad 1
+.byte 0x10, 0x00   # size, 0
+.word 0x007d       # number of blocks (size of cover.raw / 512)
+.word 0x0,  0xa000 # 0xa000:0x0000 => 0xa0000
+.quad 1            # starting from block 1
 
-	// or
-	//       .byte 0x10,0x00,0x7d,0x00
-	//       .byte 0x00,0x00,0x00,0xa0
-	//       .byte 1,0,0,0,0,0,0,0
-hw: .string "xv6 @ UIC rocks!"
-bootdrive:	.byte 0x00
+hello: .string "xv6 @ UIC rocks!"
 
-.org 0x01fe
- .word 0xAA55
+bdnr: .byte 0x00   # a place-holder for storing the boot drive number
+
+.org 0x01fe  # or 510
+.word 0xAA55 # or .byte 0x55, 0xaa
