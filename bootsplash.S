@@ -30,6 +30,19 @@ movb bdnr,  %dl
 movw $DAP,  %si
 int  $0x13      # load image
 
+
+movb $0,    %ah
+int  $0x16      # wait for keyboard input
+
+# hint: what's the background color code?
+movw $0x10, %ah
+movw $0x10, %al # set DAC color register, see doc for %AL=10h
+movw $0xf, %bx  # color register (how many possible values? see doc of video mode)
+movb $63, %dh   # full red
+movb $0, %ch    # no green
+movb $0, %cl    # no blue
+int  $0x10
+
 loop:
 jmp loop
 
