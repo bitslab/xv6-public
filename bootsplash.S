@@ -35,8 +35,8 @@ movb $0,    %ah
 int  $0x16      # wait for keyboard input
 
 # hint: what's the background color code?
-movw $0x10, %ah
-movw $0x10, %al # set DAC color register, see doc for %AL=10h
+movb $0x10, %ah
+movb $0x10, %al # set DAC color register, see doc for %AL=10h
 movw $0xf, %bx  # color register (how many possible values? see doc of video mode)
 movb $63, %dh   # full red
 movb $0, %ch    # no green
@@ -47,8 +47,8 @@ loop:
 jmp loop
 
 DAP:
-.byte 0x10, 0x00   # size, 0
-.word 0x007d       # number of blocks (size of cover.raw / 512)
+.byte 0x10, 0x00   # size = 16, 0
+.word 125          # number of blocks (size of cover.raw / 512)
 .word 0x0,  0xa000 # 0xa000:0x0000 => 0xa0000
 .quad 1            # starting from block 1
 
