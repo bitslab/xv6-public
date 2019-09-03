@@ -1,5 +1,5 @@
 .code16
-.globl start
+.global start
 
 start:
 movb %dl, bdnr # save boot drive number in memory
@@ -30,7 +30,11 @@ movb bdnr,  %dl
 movw $DAP,  %si
 int  $0x13      # load image
 
+# for int $0x10 below
+movb $63, %dh # red
+movw $0, %cx  # no green, no blue
 
+loop:
 movb $0,    %ah
 int  $0x16      # wait for keyboard input
 
@@ -38,12 +42,10 @@ int  $0x16      # wait for keyboard input
 movb $0x10, %ah
 movb $0x10, %al # set DAC color register, see doc for %AL=10h
 movw $0xf, %bx  # color register (how many possible values? see doc of video mode)
-movb $63, %dh   # full red
-movb $0, %ch    # no green
-movb $0, %cl    # no blue
-int  $0x10
 
-loop:
+int  $0x10
+xchg %dh, %ch
+
 jmp loop
 
 DAP:
