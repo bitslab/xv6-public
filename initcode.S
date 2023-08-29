@@ -3,13 +3,13 @@
 #include "syscall.h"
 #include "traps.h"
 
-
 # exec(init, argv)
-.globl start
+.code64
+.global start
 start:
   mov $init, %rdi
   mov $argv, %rsi
-  mov $SYS_exec, %rax  
+  mov $SYS_exec, %rax
   syscall
 
 # for(;;) exit();
@@ -23,8 +23,7 @@ init:
   .string "/init\0"
 
 # char *argv[] = { init, 0 };
-.p2align 2
+.p2align 3
 argv:
   .quad init
   .quad 0
-

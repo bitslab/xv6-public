@@ -5,6 +5,8 @@ _*
 *.asm
 *.sym
 *.img
+fmt/*
+tags
 vectors.S
 bootblock
 entryother
@@ -14,3 +16,4 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
+.gdb_history

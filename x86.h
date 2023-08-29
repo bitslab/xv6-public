@@ -57,20 +57,20 @@ stosl(void *addr, int data, int cnt)
                "memory", "cc");
 }
 
+#ifndef __i386__ // suppress warning for bootmain
 struct segdesc;
 
 static inline void
 lgdt(struct segdesc *p, int size)
 {
   volatile ushort pd[5];
+  addr_t addr = (addr_t)p;
 
   pd[0] = size-1;
-  pd[1] = (addr_t)p;
-  pd[2] = (addr_t)p >> 16;
-  pd[3] = (addr_t)p >> 32;
-  pd[4] = (addr_t)p >> 48;
-//  pd[5] = (addr_t)p >> 64;
-//  pd[6] = (addr_t)p >> 80;
+  pd[1] = addr;
+  pd[2] = addr >> 16;
+  pd[3] = addr >> 32;
+  pd[4] = addr >> 48;
 
   asm volatile("lgdt (%0)" : : "r" (pd));
 }
@@ -81,15 +81,17 @@ static inline void
 lidt(struct gatedesc *p, int size)
 {
   volatile ushort pd[5];
+  addr_t addr = (addr_t)p;
 
   pd[0] = size-1;
-  pd[1] = (addr_t)p;
-  pd[2] = (addr_t)p >> 16;
-  pd[3] = (addr_t)p >> 32;
-  pd[4] = (addr_t)p >> 48;
+  pd[1] = addr;
+  pd[2] = addr >> 16;
+  pd[3] = addr >> 32;
+  pd[4] = addr >> 48;
 
   asm volatile("lidt (%0)" : : "r" (pd));
 }
+#endif // ndef __i386__
 
 static inline void
 ltr(ushort sel)
@@ -103,12 +105,6 @@ readeflags(void)
   addr_t eflags;
   asm volatile("pushf; pop %0" : "=r" (eflags));
   return eflags;
-}
-
-static inline void
-loadgs(ushort v)
-{
-  asm volatile("movw %0, %%gs" : : "r" (v));
 }
 
 static inline void
@@ -160,7 +156,7 @@ lcr3(addr_t val)
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
-   uint64 rax;      
+   uint64 rax;
    uint64 rbx;
    uint64 rcx;
    uint64 rdx;
@@ -175,13 +171,13 @@ struct trapframe {
    uint64 r13;
    uint64 r14;
    uint64 r15;
- 
+
    uint64 trapno;
    uint64 err;
- 
-   uint64 rip;     
+
+   uint64 rip;
    uint64 cs;
-   uint64 rflags;  
-   uint64 rsp;     
-   uint64 ss;      
+   uint64 rflags;
+   uint64 rsp;
+   uint64 ss;
 };

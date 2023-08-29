@@ -1,7 +1,6 @@
 #include "types.h"
 #include "x86.h"
 #include "defs.h"
-#include "date.h"
 #include "param.h"
 #include "memlayout.h"
 #include "mmu.h"
@@ -42,14 +41,13 @@ sys_getpid(void)
   return proc->pid;
 }
 
-int
+addr_t
 sys_sbrk(void)
 {
-  int addr;
-  int n;
+  addr_t addr;
+  addr_t n;
 
-  if(argint(0, &n) < 0)
-    return -1;
+  argaddr(0, &n);
   addr = proc->sz;
   if(growproc(n) < 0)
     return -1;

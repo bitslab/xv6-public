@@ -8,36 +8,35 @@
 # with %cs=0 %ip=7c00.
 
 .code16                       # Assemble for 16-bit mode
-.globl start
+.global start
 start:
   cli                         # BIOS enabled interrupts; disable
 
   # Zero data segment registers DS, ES, and SS.
-  xorw    %ax,%ax             # Set %ax to zero
-  movw    %ax,%ds             # -> Data Segment
-  movw    %ax,%es             # -> Extra Segment
-  movw    %ax,%ss             # -> Stack Segment
+  xorw    %ax, %ax            # Set %ax to zero
+  movw    %ax, %ds            # -> Data Segment
+  movw    %ax, %es            # -> Extra Segment
+  movw    %ax, %ss            # -> Stack Segment
 
-
-  # Physical address line A20 is tied to zero so that the first PCs 
+  # Physical address line A20 is tied to zero so that the first PCs
   # with 2 MB would run software that assumed 1 MB.  Undo that.
 seta20.1:
-  inb     $0x64,%al               # Wait for not busy
-  testb   $0x2,%al
+  inb     $0x64, %al          # Wait for not busy
+  testb   $0x2, %al
   jnz     seta20.1
 
-  movb    $0xd1,%al               # 0xd1 -> port 0x64
-  outb    %al,$0x64
+  movb    $0xd1, %al          # 0xd1 -> port 0x64
+  outb    %al, $0x64
 
 seta20.2:
-  inb     $0x64,%al               # Wait for not busy
-  testb   $0x2,%al
+  inb     $0x64, %al          # Wait for not busy
+  testb   $0x2, %al
   jnz     seta20.2
 
-  movb    $0xdf,%al               # 0xdf -> port 0x60
-  outb    %al,$0x60
+  movb    $0xdf, %al          # 0xdf -> port 0x60
+  outb    %al, $0x60
 
-  # Switch from real to protected mode.  Use a bootstrap GDT that makes
+  # Switch from real to protected mode. Use a bootstrap GDT that makes
   # virtual addresses map directly to physical addresses so that the
   # effective memory map doesn't change during the transition.
   lgdt    gdtdesc
@@ -45,9 +44,8 @@ seta20.2:
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
 
-//PAGEBREAK!
   # Complete the transition to 32-bit protected mode by using a long jmp
-  # to reload %cs and %eip.  The segment descriptors are set up with no
+  # to reload %cs and %eip. The segment descriptors are set up with no
   # translation, so that the mapping is still the identity mapping.
   ljmp    $(SEG_KCODE<<3), $start32
 
@@ -66,13 +64,7 @@ start32:
   movl    $start, %esp
   call    bootmain
 
-  # If bootmain returns (it shouldn't), trigger a Bochs
-  # breakpoint if running under Bochs, then loop.
-  movw    $0x8a00, %ax            # 0x8a00 -> port 0x8a00
-  movw    %ax, %dx
-  outw    %ax, %dx
-  movw    $0x8ae0, %ax            # 0x8ae0 -> port 0x8a00
-  outw    %ax, %dx
+  # If bootmain returns (it shouldn't), spin.
 spin:
   jmp     spin
 
@@ -86,4 +78,3 @@ gdt:
 gdtdesc:
   .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
   .long   gdt                             # address gdt
-

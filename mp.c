@@ -12,7 +12,6 @@
 #include "proc.h"
 
 struct cpu cpus[NCPU];
-int ismp;
 int ncpu;
 uchar ioapicid;
 
@@ -61,7 +60,7 @@ mpsearch(void)
     if((mp = mpsearch1(p-1024, 1024)))
       return mp;
   }
-  return mpsearch1(0x0, 0x100000);
+  return mpsearch1(0xF0000, 0x10000);
 }
 
 // Search for an MP configuration table.  For now,
@@ -75,7 +74,7 @@ mpconfig(struct mp **pmp)
   struct mpconf *conf;
   struct mp *mp;
 
-  if((mp = mpsearch()) == 0 || mp->physaddr == 0) 
+  if((mp = mpsearch()) == 0 || mp->physaddr == 0)
     return 0;
   conf = (struct mpconf*) P2V((addr_t) mp->physaddr);
   if(memcmp(conf, "PCMP", 4) != 0)
@@ -101,8 +100,7 @@ mpinit(void)
     cprintf("No other CPUs found.\n");
     return;
   }
-  ismp = 1;
-  lapic = IO2V((addr_t)conf->lapicaddr);
+  lapic = P2V((addr_t)conf->lapicaddr_p);
   for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
     switch(*p){
     case MPPROC:
@@ -124,16 +122,9 @@ mpinit(void)
       p += 8;
       continue;
     default:
-      ismp = 0;
+      panic("Major problem parsing mp config.");
       break;
     }
-  }
-  if(!ismp){
-    // Didn't like what we found; fall back to no MP.
-    ncpu = 1;
-    lapic = 0;
-    ioapicid = 0;
-    return;
   }
   cprintf("Seems we are SMP, ncpu = %d\n",ncpu);
   if(mp->imcrp){

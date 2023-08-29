@@ -1,5 +1,5 @@
 // Boot loader.
-// 
+//
 // Part of the boot sector, along with bootasm.S, which calls bootmain().
 // bootasm.S has put the processor into protected 32-bit mode.
 // bootmain() loads a multiboot kernel image from the disk starting at
@@ -70,9 +70,7 @@ found_it:
 void
 waitdisk(void)
 {
-  // Wait for disk ready.
-  while((inb(0x1F7) & 0xC0) != 0x40)
-    ;
+  while((inb(0x1F7) & 0xC0) != 0x40);
 }
 
 // Read a single sector at offset into dst.

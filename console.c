@@ -28,40 +28,47 @@ static struct {
 
 static char digits[] = "0123456789abcdef";
 
-static void
-printptr(addr_t x) {
+  static void
+print_x64(addr_t x)
+{
   int i;
   for (i = 0; i < (sizeof(addr_t) * 2); i++, x <<= 4)
     consputc(digits[x >> (sizeof(addr_t) * 8 - 4)]);
 }
 
-static void
-printint(int xx, int base, int sign)
+  static void
+print_x32(uint x)
 {
-  char buf[32];
   int i;
-  uint64 x;
+  for (i = 0; i < (sizeof(uint) * 2); i++, x <<= 4)
+    consputc(digits[x >> (sizeof(uint) * 8 - 4)]);
+}
 
-  if(sign && (sign = xx < 0))
-    x = -xx;
-  else
-    x = xx;
+  static void
+print_d(int v)
+{
+  char buf[16];
+  int64 x = v;
 
-  i = 0;
-  do{
-    buf[i++] = digits[x % base];
-  }while((x /= base) != 0);
+  if (v < 0)
+    x = -x;
 
-  if(sign)
+  int i = 0;
+  do {
+    buf[i++] = digits[x % 10];
+    x /= 10;
+  } while(x != 0);
+
+  if (v < 0)
     buf[i++] = '-';
 
-  while(--i >= 0)
+  while (--i >= 0)
     consputc(buf[i]);
 }
 //PAGEBREAK: 50
 
 // Print to the console. only understands %d, %x, %p, %s.
-void
+  void
 cprintf(char *fmt, ...)
 {
   va_list ap;
@@ -71,48 +78,39 @@ cprintf(char *fmt, ...)
   va_start(ap, fmt);
 
   locking = cons.locking;
-  if(locking)
+  if (locking)
     acquire(&cons.lock);
 
   if (fmt == 0)
     panic("null fmt");
 
-  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
-    if(c != '%'){
+  for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
+    if (c != '%') {
       consputc(c);
       continue;
     }
     c = fmt[++i] & 0xff;
-    if(c == 0)
+    if (c == 0)
       break;
-    switch(c){
+    switch(c) {
     case 'd':
-      printint(va_arg(ap, int), 10, 1);
+      print_d(va_arg(ap, int));
       break;
     case 'x':
-      printint(va_arg(ap, int), 16, 0);
+      print_x32(va_arg(ap, uint));
       break;
     case 'p':
-      printptr(va_arg(ap, addr_t));
+      print_x64(va_arg(ap, addr_t));
       break;
     case 's':
-      if((s = va_arg(ap, char*)) == 0)
+      if ((s = va_arg(ap, char*)) == 0)
         s = "(null)";
-      for(; *s; s++)
-        consputc(*s);
+      while (*s)
+        consputc(*(s++));
       break;
     case '%':
       consputc('%');
       break;
-/*    case 'l':
-      c = fmt[++i] & 0xff;
-      if( c == 'd' ) { 
-        printint(*argp++, 10, 1); 
-        break; 
-      } else if ( c == 'x' ) { 
-        printint(*argp++, 10, 0); 
-        break;
-      }   */
     default:
       // Print unknown % sequence to draw attention.
       consputc('%');
@@ -121,27 +119,28 @@ cprintf(char *fmt, ...)
     }
   }
 
-  if(locking)
+  if (locking)
     release(&cons.lock);
 }
 
-void
+__attribute__((noreturn))
+  void
 panic(char *s)
 {
   int i;
   addr_t pcs[10];
-  
+
   cli();
   cons.locking = 0;
   cprintf("cpu%d: panic: ", cpu->id);
   cprintf(s);
   cprintf("\n");
   getcallerpcs(&s, pcs);
-  for(i=0; i<10; i++)
-    cprintf(" %p", pcs[i]);
+  for (i=0; i<10; i++)
+    cprintf(" %p\n", pcs[i]);
   panicked = 1; // freeze other CPU
-  for(;;)
-    ;
+  for (;;)
+    hlt();
 }
 
 //PAGEBREAK: 50
@@ -149,30 +148,30 @@ panic(char *s)
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
 
-static void
+  static void
 cgaputc(int c)
 {
   int pos;
-  
+
   // Cursor position: col + 80*row.
   outb(CRTPORT, 14);
   pos = inb(CRTPORT+1) << 8;
   outb(CRTPORT, 15);
   pos |= inb(CRTPORT+1);
 
-  if(c == '\n')
+  if (c == '\n')
     pos += 80 - pos%80;
-  else if(c == BACKSPACE){
-    if(pos > 0) --pos;
+  else if (c == BACKSPACE) {
+    if (pos > 0) --pos;
   } else
-    crt[pos++] = (c&0xff) | 0x0700;  // black on white
-  
-  if((pos/80) >= 24){  // Scroll up.
+    crt[pos++] = (c&0xff) | 0x0700;  // gray on black
+
+  if ((pos/80) >= 24){  // Scroll up.
     memmove(crt, crt+80, sizeof(crt[0])*23*80);
     pos -= 80;
     memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
   }
-  
+
   outb(CRTPORT, 14);
   outb(CRTPORT+1, pos>>8);
   outb(CRTPORT, 15);
@@ -180,16 +179,16 @@ cgaputc(int c)
   crt[pos] = ' ' | 0x0700;
 }
 
-void
+  void
 consputc(int c)
 {
-  if(panicked){
+  if (panicked) {
     cli();
     for(;;)
-      ;
+      hlt();
   }
 
-  if(c == BACKSPACE){
+  if (c == BACKSPACE) {
     uartputc('\b'); uartputc(' '); uartputc('\b');
   } else
     uartputc(c);
@@ -207,7 +206,7 @@ struct {
 
 #define C(x)  ((x)-'@')  // Control-x
 
-void
+  void
 consoleintr(int (*getc)(void))
 {
   int c;
@@ -223,23 +222,23 @@ consoleintr(int (*getc)(void))
       break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
-            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+          input.buf[(input.e-1) % INPUT_BUF] != '\n'){
         input.e--;
         consputc(BACKSPACE);
       }
       break;
     case C('H'): case '\x7f':  // Backspace
-      if(input.e != input.w){
+      if (input.e != input.w) {
         input.e--;
         consputc(BACKSPACE);
       }
       break;
     default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
+      if (c != 0 && input.e-input.r < INPUT_BUF) {
         c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
         consputc(c);
-        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+        if (c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF) {
           input.w = input.e;
           wakeup(&input.r);
         }
@@ -250,8 +249,8 @@ consoleintr(int (*getc)(void))
   release(&input.lock);
 }
 
-int
-consoleread(struct inode *ip, char *dst, int n)
+  int
+consoleread(struct inode *ip, uint off, char *dst, int n)
 {
   uint target;
   int c;
@@ -261,7 +260,7 @@ consoleread(struct inode *ip, char *dst, int n)
   acquire(&input.lock);
   while(n > 0){
     while(input.r == input.w){
-      if(proc->killed){
+      if (proc->killed) {
         release(&input.lock);
         ilock(ip);
         return -1;
@@ -269,8 +268,8 @@ consoleread(struct inode *ip, char *dst, int n)
       sleep(&input.r, &input.lock);
     }
     c = input.buf[input.r++ % INPUT_BUF];
-    if(c == C('D')){  // EOF
-      if(n < target){
+    if (c == C('D')) {  // EOF
+      if (n < target) {
         // Save ^D for next time, to make sure
         // caller gets a 0-byte result.
         input.r--;
@@ -279,7 +278,7 @@ consoleread(struct inode *ip, char *dst, int n)
     }
     *dst++ = c;
     --n;
-    if(c == '\n')
+    if (c == '\n')
       break;
   }
   release(&input.lock);
@@ -288,8 +287,8 @@ consoleread(struct inode *ip, char *dst, int n)
   return target - n;
 }
 
-int
-consolewrite(struct inode *ip, char *buf, int n)
+  int
+consolewrite(struct inode *ip, uint off, char *buf, int n)
 {
   int i;
 
@@ -303,7 +302,7 @@ consolewrite(struct inode *ip, char *buf, int n)
   return n;
 }
 
-void
+  void
 consoleinit(void)
 {
   initlock(&cons.lock, "console");
@@ -313,7 +312,5 @@ consoleinit(void)
   devsw[CONSOLE].read = consoleread;
   cons.locking = 1;
 
-  picenable(IRQ_KBD);
   ioapicenable(IRQ_KBD, 0);
 }
-

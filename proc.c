@@ -20,8 +20,6 @@ extern void syscall_trapret(void);
 
 static void wakeup1(void *chan);
 
-//#define NPROC 64
-
 void
 pinit(void)
 {
@@ -73,7 +71,7 @@ found:
   sp -= sizeof *p->context;
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
-  p->context->eip = (addr_t)forkret;
+  p->context->rip = (addr_t)forkret;
 
   return p;
 }
@@ -83,47 +81,36 @@ found:
 void
 userinit(void)
 {
-
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
 
   inituvm(p->pgdir, _binary_initcode_start,
           (addr_t)_binary_initcode_size);
-  p->sz = PGSIZE;
+  p->sz = PGSIZE * 2;
   memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-  p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
 
-  p->tf->rflags = FL_IF;
-  p->tf->rsp = PGSIZE;
-  p->tf->rip = 0;  // beginning of initcode.S
-  p->tf->rcx = 0;
-  
+  p->tf->r11 = FL_IF;  // with SYSRET, EFLAGS is in R11
+  p->tf->rsp = p->sz;
+  p->tf->rcx = PGSIZE;  // with SYSRET, RIP is in RCX
+
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  // this assignment to p->state lets other cores
-  // run this process. the acquire forces the above
-  // writes to be visible, and the lock is also needed
-  // because the assignment might not be atomic.
-  acquire(&ptable.lock);
-
+  __sync_synchronize();
   p->state = RUNNABLE;
-
-  release(&ptable.lock);
 }
 
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
-growproc(int n)
+growproc(int64 n)
 {
-  uint sz;
+  addr_t sz;
 
   sz = proc->sz;
   if(n > 0){
@@ -137,6 +124,7 @@ growproc(int n)
   switchuvm(proc);
   return 0;
 }
+//PAGEBREAK!
 
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
@@ -148,9 +136,8 @@ fork(void)
   struct proc *np;
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((np = allocproc()) == 0)
     return -1;
-  }
 
   // Copy process state from p.
   if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
@@ -175,15 +162,13 @@ fork(void)
 
   pid = np->pid;
 
-  acquire(&ptable.lock);
-
+  __sync_synchronize();
   np->state = RUNNABLE;
-
-  release(&ptable.lock);
 
   return pid;
 }
 
+//PAGEBREAK!
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
@@ -229,6 +214,7 @@ exit(void)
   panic("zombie exit");
 }
 
+//PAGEBREAK!
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
@@ -285,6 +271,7 @@ scheduler(void)
 {
   int i = 0;
   struct proc *p;
+  int skipped = 0;
   for(;;){
     ++i;
     // Enable interrupts on this processor.
@@ -292,8 +279,11 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE) {
+        skipped++;
         continue;
+      }
+      skipped = 0;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -309,7 +299,10 @@ scheduler(void)
       proc = 0;
     }
     release(&ptable.lock);
-
+    if (skipped > NPROC) {
+      hlt();
+      skipped = 0;
+    }
   }
 }
 
@@ -367,11 +360,11 @@ forkret(void)
     iinit(ROOTDEV);
     initlog(ROOTDEV);
   }
-  struct proc *p = proc;
 
   // Return to "caller", actually trapret (see allocproc).
 }
 
+//PAGEBREAK!
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
 void
@@ -483,7 +476,7 @@ procdump(void)
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
-      getstackpcs((addr_t*)p->context->ebp+2, pc);
+      getstackpcs((addr_t*)p->context->rbp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }

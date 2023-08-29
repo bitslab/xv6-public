@@ -25,15 +25,13 @@
 static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
-struct superblock sb; 
+struct superblock sb;
 
 // Read the super block.
 void
 readsb(int dev, struct superblock *sb)
 {
-  struct buf *bp;
-
-  bp = bread(dev, 1);
+  struct buf *bp = bread(dev, 1);
   memmove(sb, bp->data, sizeof(*sb));
   brelse(bp);
 }
@@ -42,9 +40,7 @@ readsb(int dev, struct superblock *sb)
 static void
 bzero(int dev, int bno)
 {
-  struct buf *bp;
-
-  bp = bread(dev, bno);
+  struct buf *bp = bread(dev, bno);
   memset(bp->data, 0, BSIZE);
   log_write(bp);
   brelse(bp);
@@ -58,8 +54,6 @@ balloc(uint dev)
 {
   int b, bi, m;
   struct buf *bp;
-
-  bp = 0;
   for(b = 0; b < sb.size; b += BPB){
     bp = bread(dev, BBLOCK(b, sb));
     for(bi = 0; bi < BPB && b + bi < sb.size; bi++){
@@ -81,11 +75,10 @@ balloc(uint dev)
 static void
 bfree(int dev, uint b)
 {
-  struct buf *bp;
   int bi, m;
 
   readsb(dev, &sb);
-  bp = bread(dev, BBLOCK(b, sb));
+  struct buf *bp = bread(dev, BBLOCK(b, sb));
   bi = b % BPB;
   m = 1 << (bi % 8);
   if((bp->data[bi/8] & m) == 0)
@@ -165,12 +158,12 @@ void
 iinit(int dev)
 {
   int i = 0;
-  
+
   initlock(&icache.lock, "icache");
   for(i = 0; i < NINODE; i++) {
     initsleeplock(&icache.inode[i].lock, "inode");
   }
-  
+
   readsb(dev, &sb);
   /*cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
@@ -242,7 +235,7 @@ iget(uint dev, uint inum)
       release(&icache.lock);
       return ip;
     }
-    if(empty == 0 && ip->ref == 0)    // Remember empty slot.
+    if(empty == 0 && ip->ref == 0) // Remember empty slot.
       empty = ip;
   }
 
@@ -439,7 +432,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
-    return devsw[ip->major].read(ip, dst, n);
+    return devsw[ip->major].read(ip, off, dst, n);
   }
 
   if(off > ip->size || off + n < off)
@@ -450,13 +443,6 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
-    /*
-    cprintf("data off %d:\n", off);
-    for (int j = 0; j < min(m, 10); j++) {
-      cprintf("%x ", bp->data[off%BSIZE+j]);
-    }
-    cprintf("\n");
-    */
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
   }
@@ -474,7 +460,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
-    return devsw[ip->major].write(ip, src, n);
+    return devsw[ip->major].write(ip, off, src, n);
   }
 
   if(off > ip->size || off + n < off)
@@ -625,8 +611,7 @@ namex(char *path, int nameiparent, char *name)
       return 0;
     }
     if(nameiparent && *path == '\0'){
-      // Stop one level early.
-      iunlock(ip);
+      iunlock(ip);  // Stop one level early.
       return ip;
     }
     if((next = dirlookup(ip, name, 0)) == 0){

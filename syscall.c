@@ -7,32 +7,24 @@
 #include "x86.h"
 #include "syscall.h"
 
-// User code makes a system call with INT T_SYSCALL.
-// System call number in %rax.
-// Arguments on the stack, from the user call to the C
-// library system call function. The saved user %esp points
-// to a saved program counter, and then the first argument.
-
 // Fetch the int at addr from the current process.
 int
 fetchint(addr_t addr, int *ip)
 {
-  if(addr >= proc->sz || addr+4 > proc->sz)
+  if(addr >= proc->sz || addr+sizeof(int) > proc->sz)
     return -1;
   *ip = *(int*)(addr);
   return 0;
 }
 
-
 int
 fetchaddr(addr_t addr, addr_t *ip)
 {
   if(addr >= proc->sz || addr+sizeof(addr_t) > proc->sz)
-    return -1; 
+    return -1;
   *ip = *(addr_t*)(addr);
   return 0;
 }
-
 
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
@@ -52,7 +44,6 @@ fetchstr(addr_t addr, char **pp)
   return -1;
 }
 
-// arguments passed in registers on x64
 static addr_t
 fetcharg(int n)
 {
@@ -65,7 +56,6 @@ fetcharg(int n)
   case 5: return proc->tf->r9;
   }
   panic("failed fetch");
-  return -1;
 }
 
 int
@@ -81,7 +71,6 @@ argaddr(int n, addr_t *ip)
   *ip = fetcharg(n);
   return 0;
 }
-
 
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes.  Check that the pointer
@@ -112,29 +101,30 @@ argstr(int n, char **pp)
   return fetchstr(addr, pp);
 }
 
-extern int sys_chdir(void);
-extern int sys_close(void);
-extern int sys_dup(void);
-extern int sys_exec(void);
-extern int sys_exit(void);
-extern int sys_fork(void);
-extern int sys_fstat(void);
-extern int sys_getpid(void);
-extern int sys_kill(void);
-extern int sys_link(void);
-extern int sys_mkdir(void);
-extern int sys_mknod(void);
-extern int sys_open(void);
-extern int sys_pipe(void);
-extern int sys_read(void);
-extern int sys_sbrk(void);
-extern int sys_sleep(void);
-extern int sys_unlink(void);
-extern int sys_wait(void);
-extern int sys_write(void);
-extern int sys_uptime(void);
+extern addr_t sys_chdir(void);
+extern addr_t sys_close(void);
+extern addr_t sys_dup(void);
+extern addr_t sys_exec(void);
+extern addr_t sys_exit(void);
+extern addr_t sys_fork(void);
+extern addr_t sys_fstat(void);
+extern addr_t sys_getpid(void);
+extern addr_t sys_kill(void);
+extern addr_t sys_link(void);
+extern addr_t sys_mkdir(void);
+extern addr_t sys_mknod(void);
+extern addr_t sys_open(void);
+extern addr_t sys_pipe(void);
+extern addr_t sys_read(void);
+extern addr_t sys_sbrk(void);
+extern addr_t sys_sleep(void);
+extern addr_t sys_unlink(void);
+extern addr_t sys_wait(void);
+extern addr_t sys_write(void);
+extern addr_t sys_uptime(void);
 
-static int (*syscalls[])(void) = {
+// PAGEBREAK!
+static addr_t (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
 [SYS_wait]    sys_wait,
@@ -159,16 +149,19 @@ static int (*syscalls[])(void) = {
 };
 
 void
-syscall(void)
+syscall(struct trapframe *tf)
 {
-  int num;
-
-  num = proc->tf->rax;
-  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    proc->tf->rax = syscalls[num]();
+  if (proc->killed)
+    exit();
+  proc->tf = tf;
+  uint64 num = proc->tf->rax;
+  if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    tf->rax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             proc->pid, proc->name, num);
-    proc->tf->rax = -1;
+    tf->rax = -1;
   }
+  if (proc->killed)
+    exit();
 }
