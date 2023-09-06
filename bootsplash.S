@@ -7,7 +7,6 @@ movb %dl, bdnr # save boot drive number in memory
 # anyway those registers may have already been cleared.
 xorw %ax, %ax
 movw %ax, %ds # clear ds
-movw %ax, %es # clear es
 
 movb $0x3, %ah # get cursor position
 int  $0x10
