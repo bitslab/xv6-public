@@ -9,13 +9,14 @@ xorw %ax, %ax
 movw %ax, %ds # clear ds
 movw %ax, %es # clear es
 
-movb $0x13, %ah # parameters for int 13h
+movb $0x3, %ah # get cursor position
+int  $0x10
+
+movb $0x13, %ah # parameters for int 10h / ah 13h
 movb $1,    %al # write mode = 1
 movw $0x0f, %bx # bh = 0, bg = 0(black) fg = 15(white)
-movb $10,   %dh # the 10th row
-movb $0,    %dl # starts from the left
 movw $17,   %cx # length
-lea  hello, %bp # bp is the address of the string (es has been cleared)
+lea  hello, %bp # bp is the address of the string
 int  $0x10
 
 movb $0,    %ah
