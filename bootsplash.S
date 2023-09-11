@@ -1,6 +1,5 @@
 .code16
 .global start
-
 start:
 movb %dl, bdnr # save boot drive number in memory
 
@@ -53,7 +52,7 @@ DAP:
 .byte 0x10, 0x00   # size = 16, 0
 .word 125          # number of blocks (size of cover.raw / 512)
 .word 0x0,  0xa000 # 0xa000:0x0000 => 0xa0000
-#.long 0xa0000000
+                   # OR .long 0xa0000000
 .quad 1            # starting from block 1
 
 hello: .string "xv6 @ UIC rocks!"
