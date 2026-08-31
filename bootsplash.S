@@ -28,13 +28,7 @@ movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
 movw    %ax, %ds                # -> DS: Data Segment
 movw    %ax, %ss                # -> SS: Stack Segment
 
-
-
-
-// MORE OF YOUR CODE GOES HERE
-
-
-
+mov     $0x1000, %esp
 call splashmain
 
 loop:
