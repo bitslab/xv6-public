@@ -5,27 +5,15 @@
 .global start
 start:
 
-# anyway those registers may have already been cleared.
-xorw %ax, %ax
-movw %ax, %ds # clear ds
 
-movb $0x3, %ah # get cursor position
-int  $0x10
 
-movb $0x13, %ah # parameters for int 10h / ah 13h
-movb $1,    %al # write mode = 1
-movw $0x0f, %bx # bh = 0, bg = 0(black) fg = 15(white)
-movw $17,   %cx # length
-lea  hello, %bp # bp is the address of the string
-int  $0x10
 
-movb $0,    %ah
-int  $0x16      # wait for keyboard input
+// YOUR CODE GOES HERE
 
-movb $0x0,  %ah
-movb $0x13, %al
-int  $0x10      # change to video mode
 
+
+
+# Change to 32-bit protected mode so we can run C code
 cli
 lgdt    gdtdesc
 movl    %cr0, %eax
@@ -38,11 +26,14 @@ start32:
 
 movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
 movw    %ax, %ds                # -> DS: Data Segment
-movw    %ax, %es                # -> ES: Extra Segment
 movw    %ax, %ss                # -> SS: Stack Segment
 
-movl $0x0f0f0f0f,0xA0000
-mov $0x1000, %esp
+
+
+
+// MORE OF YOUR CODE GOES HERE
+
+
 
 call splashmain
 
@@ -61,6 +52,3 @@ gdt:
 gdtdesc:
   .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
   .long   gdt                             # address gdt
-
-#.org 0x01fe  # or 510
-#.word 0xAA55 # or .byte 0x55, 0xaa
