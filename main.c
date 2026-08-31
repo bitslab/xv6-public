@@ -18,13 +18,13 @@ int
 main(void)
 {
   uartearlyinit();
-  kinit1(end, P2V(4*1024*1024)); // phys page allocator
+  kinit1(end, P2V(PHYSTOP)); // phys page allocator
   kvmalloc();      // kernel page table
   mpinit();        // detect other processors
   lapicinit();     // interrupt controller
   tvinit();        // trap vectors
   seginit();       // segment descriptors
-  cprintf("\ncpu%d: starting Fall 2021 xv6\n\n", cpunum());
+  cprintf("\ncpu%d: starting Fall 2024 xv6\n\n", cpunum());
   ioapicinit();    // another interrupt controller
   consoleinit();   // console hardware
   uartinit();      // serial port
@@ -33,7 +33,7 @@ main(void)
   fileinit();      // file table
   ideinit();       // disk
   startothers();   // start other processors
-  kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
+  kinit2();
   userinit();      // first user process
   mpmain();        // finish this processor's setup
 }

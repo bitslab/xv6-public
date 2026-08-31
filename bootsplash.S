@@ -1,7 +1,9 @@
+#include "mmu.h"
+#include "asm.h"
+
 .code16
 .global start
 start:
-movb %dl, bdnr # save boot drive number in memory
 
 # anyway those registers may have already been cleared.
 xorw %ax, %ax
@@ -24,40 +26,41 @@ movb $0x0,  %ah
 movb $0x13, %al
 int  $0x10      # change to video mode
 
-movb $0x42, %ah
-movb bdnr,  %dl
-movw $DAP,  %si
-int  $0x13      # load image
+cli
+lgdt    gdtdesc
+movl    %cr0, %eax
+orl     $CR0_PE, %eax
+movl    %eax, %cr0
 
-# for int $0x10 below
-movb $63, %dh # red
-movw $0, %cx  # no green, no blue
+ljmp    $(SEG_KCODE<<3), $start32
+.code32  # Tell assembler to generate 32-bit code now.
+start32:
+
+movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
+movw    %ax, %ds                # -> DS: Data Segment
+movw    %ax, %es                # -> ES: Extra Segment
+movw    %ax, %ss                # -> SS: Stack Segment
+
+movl $0x0f0f0f0f,0xA0000
+mov $0x1000, %esp
+
+call splashmain
 
 loop:
-movb $0,    %ah
-int  $0x16      # wait for keyboard input
-
-# hint: what's the background color code?
-movb $0x10, %ah
-movb $0x10, %al # set DAC color register, see doc for %AL=10h
-movw $0xf, %bx  # color register (how many possible values? see doc of video mode)
-
-int  $0x10
-xchg %dh, %ch
-
-jmp loop
-
-.globl DAP
-DAP:
-.byte 0x10, 0x00   # size = 16, 0
-.word 125          # number of blocks (size of cover.raw / 512)
-.word 0x0,  0xa000 # 0xa000:0x0000 => 0xa0000
-                   # OR .long 0xa0000000
-.quad 1            # starting from block 1
+    jmp loop
 
 hello: .string "xv6 @ UIC rocks!"
 
-bdnr: .byte 0x00   # a place-holder for storing the boot drive number
+# Bootstrap GDT
+.p2align 2                                # force 4 byte alignment
+gdt:
+  SEG_NULLASM                             # null seg
+  SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
+  SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
 
-.org 0x01fe  # or 510
-.word 0xAA55 # or .byte 0x55, 0xaa
+gdtdesc:
+  .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
+  .long   gdt                             # address gdt
+
+#.org 0x01fe  # or 510
+#.word 0xAA55 # or .byte 0x55, 0xaa

@@ -13,7 +13,7 @@ __thread struct cpu *cpu;         // %fs:(-16)
 __thread struct proc *proc;       // %fs:(-8)
 
 static pml4e_t *kpml4;
-static pde_t *kpdpt;
+static pdpe_t *kpdpt;
 
 void
 syscallinit(void)
@@ -99,10 +99,10 @@ seginit(void)
 // (directly addressable from end..P2V(PHYSTOP)).
 
 
-pde_t*
+pml4e_t*
 setupkvm(void)
 {
-  pde_t *pml4 = (pde_t*) kalloc();
+  pml4e_t *pml4 = (pml4e_t*) kalloc();
   memset(pml4, 0, PGSIZE);
   pml4[256] = v2p(kpdpt) | PTE_P | PTE_W;
   return pml4;
@@ -336,7 +336,7 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
 // Free all the pages mapped by, and all the memory used for,
 // this page table
 void
-freevm(pde_t *pml4)
+freevm(pml4e_t *pml4)
 {
   uint i, j, k, l;
   pde_t *pdp, *pd, *pt;
@@ -386,7 +386,7 @@ freevm(pde_t *pml4)
 // Clear PTE_U on a page. Used to create an inaccessible
 // page beneath the user stack.
 void
-clearpteu(pde_t *pgdir, char *uva)
+clearpteu(pml4e_t *pgdir, char *uva)
 {
   pte_t *pte;
 
@@ -399,7 +399,7 @@ clearpteu(pde_t *pgdir, char *uva)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pml4e_t *pgdir, uint sz)
 {
   pde_t *d;
   pte_t *pte;
@@ -430,7 +430,7 @@ bad:
 
 // Map user virtual address to kernel address.
 char*
-uva2ka(pde_t *pgdir, char *uva)
+uva2ka(pml4e_t *pgdir, char *uva)
 {
   pte_t *pte;
 
@@ -446,7 +446,7 @@ uva2ka(pde_t *pgdir, char *uva)
 // Most useful when pgdir is not the current page table.
 // uva2ka ensures this only works for PTE_U pages.
 int
-copyout(pde_t *pgdir, addr_t va, void *p, uint64 len)
+copyout(pml4e_t *pgdir, addr_t va, void *p, uint64 len)
 {
   char *buf, *pa0;
   addr_t n, va0;

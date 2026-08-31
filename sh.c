@@ -53,6 +53,8 @@ int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winfinite-recursion"
 // Execute cmd.  Never returns.
 void
 runcmd(struct cmd *cmd)
@@ -129,6 +131,7 @@ runcmd(struct cmd *cmd)
   }
   exit();
 }
+#pragma GCC diagnostic pop
 
 int
 getcmd(char *buf, int nbuf)
