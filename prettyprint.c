@@ -6,7 +6,8 @@ char *hoarequote = "There are two ways of constructing a software design: One wa
 int main(int argc, char** argv) {
   printf(1,"First off, printing in regular color.\n");
   printf(1,"Now changing stdout color.\n");
-  if(ioctl(1,0,3)<0) // 1 for stdout
+  // 1 for stdout, 0 for "change this file descriptor only", 3 for "color number 3"
+  if(ioctl(1,0,3)<0) 
   {
     printf(2,"ioctl failed changing color\n");
     exit();
@@ -30,7 +31,10 @@ int main(int argc, char** argv) {
   printf(2,"stderr should now be gray again\n");
 
   printf(1,"Try typing something, it ought to come out colored: ");
-  if(ioctl(1,1,0x1)<0) {
+
+  // the first argument isn't really used except to identify the console driver. 
+  // the second 1 is for "global color"
+  if(ioctl(1,1,0x1)<0) { 
     printf(1,"ioctl to set global console color failed\n");
     exit();
   }
