@@ -53,7 +53,7 @@ int sys_signal(void) {
   
   if(argint(0, &signum) < 0)
     return -1;
-  if(argaddr(1, (int*)&handler) < 0)
+  if(argaddr(1, (addr_t*)&handler) < 0)
     return -1;
 
   signal(signum,handler);
