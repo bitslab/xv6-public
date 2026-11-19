@@ -47,7 +47,7 @@ iso9660fs_readi(struct inode* ip, char* dst, uint offset, uint size)
 {
   if ( ip->type == T_DIR ) {
     if(offset==0) {
-      struct dirent *de = dst;
+      struct dirent *de = (struct dirent*)dst;
       memmove(de->name,"FAKE.txt",9);
       de->inum = 1;
       return sizeof(struct dirent);
@@ -100,7 +100,7 @@ iso9660fsinit(char * const path, char * device)
   if (mount_point) {
 
     static struct iso9660_pvd_s pvd;
-    read_block_range(&pvd,64,4);
+    read_block_range((char*)&pvd,64,4);
     if(memcmp(pvd.id,"CD001",5)==0) {
       cprintf("ID matched ISO9660 file system\n");
     }
@@ -118,11 +118,11 @@ iso9660fsinit(char * const path, char * device)
     uint addr = pvd.root_directory_record.extent*2048; // location of directory file in bytes      
     static char buf[2048];
     read_block_range(buf,addr/512,4);
-    struct iso9660_dir_s *entry = buf;
+    struct iso9660_dir_s *entry = (struct iso9660_dir_s*)buf;
 
     while (entry->length) {
       char namebuf[100]={0};
-      memcpy(namebuf,&entry->filename.str[1],entry->filename.len);
+      memmove(namebuf,&entry->filename.str[1],entry->filename.len);
       cprintf("Entry: %s\n",namebuf);
       entry = (struct iso9660_dir_s*) ((char*)entry+entry->length);
     }

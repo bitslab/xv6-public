@@ -11,7 +11,7 @@
 int
 fetchint(addr_t addr, int *ip)
 {
-  if(addr >= proc->sz || addr+sizeof(int) > proc->sz)
+  if(addr < PGSIZE || addr >= proc->sz || addr+sizeof(int) > proc->sz)
     return -1;
   *ip = *(int*)(addr);
   return 0;
@@ -20,7 +20,7 @@ fetchint(addr_t addr, int *ip)
 int
 fetchaddr(addr_t addr, addr_t *ip)
 {
-  if(addr >= proc->sz || addr+sizeof(addr_t) > proc->sz)
+  if(addr < PGSIZE || addr >= proc->sz || addr+sizeof(addr_t) > proc->sz)
     return -1;
   *ip = *(addr_t*)(addr);
   return 0;
@@ -34,7 +34,7 @@ fetchstr(addr_t addr, char **pp)
 {
   char *s, *ep;
 
-  if(addr >= proc->sz)
+  if(addr < PGSIZE || addr >= proc->sz)
     return -1;
   *pp = (char*)addr;
   ep = (char*)proc->sz;
@@ -65,7 +65,7 @@ argint(int n, int *ip)
   return 0;
 }
 
-addr_t
+int
 argaddr(int n, addr_t *ip)
 {
   *ip = fetcharg(n);
@@ -75,14 +75,14 @@ argaddr(int n, addr_t *ip)
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes.  Check that the pointer
 // lies within the process address space.
-addr_t
+int
 argptr(int n, char **pp, int size)
 {
   addr_t i;
 
   if(argaddr(n, &i) < 0)
     return -1;
-  if(size < 0 || (uint)i >= proc->sz || (uint)i+size > proc->sz)
+  if(size < 0 || i >= proc->sz || i+size > proc->sz)
     return -1;
   *pp = (char*)i;
   return 0;
@@ -95,8 +95,8 @@ argptr(int n, char **pp, int size)
 int
 argstr(int n, char **pp)
 {
-  int addr;
-  if(argint(n, &addr) < 0)
+  addr_t addr;
+  if(argaddr(n, &addr) < 0)
     return -1;
   return fetchstr(addr, pp);
 }
@@ -153,8 +153,6 @@ static addr_t (*syscalls[])(void) = {
 void
 syscall(struct trapframe *tf)
 {
-  if (proc->killed)
-    exit();
   proc->tf = tf;
   uint64 num = proc->tf->rax;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {

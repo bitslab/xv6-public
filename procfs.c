@@ -47,7 +47,7 @@ sprintuint(char* buf, uint x)
   if (x == 0) {
     buf[0] = '0';
     buf[1] = '\0';
-    return;
+    return 0;
   }
   while (x) {
     stack[stack_size++] = x % 10u;
@@ -139,7 +139,7 @@ procfs_readi(struct inode* ip, char* buf, uint offset, uint size)
       {10000+ip->inum*10+3,"pid"},
       {10000+ip->inum*10+4,"ppid"},
       {10000+ip->inum*10+5,"mappings"}};
-    return readi_helper(buf,offset,size,dentries,sizeof(dentries));
+    return readi_helper(buf,offset,size,(char*)dentries,sizeof(dentries));
   }
 
   // files
@@ -149,7 +149,7 @@ procfs_readi(struct inode* ip, char* buf, uint offset, uint size)
       sprintuint(buf1, kmemfreecount());
       return readi_helper(buf, offset, size, buf1, strlen(buf1));
     case 10004: // cpuinfo: print the total number of cpus. See the 'ncpu' global variable
-      memcpy(buf1,"CPUs: ",6);
+      memmove(buf1,"CPUs: ",6);
       return 6+sprintuint(buf1+6, cpunum());
     default: break;
   }

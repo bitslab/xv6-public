@@ -78,6 +78,7 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2();
+unsigned int    kmemfreecount();
 
 // kbd.c
 void            kbdintr(void);
@@ -156,9 +157,9 @@ char*           strncpy(char*, const char*, int);
 void            syscall(struct trapframe *);
 void            syscallinit(void);
 int             argint(int, int*);
-addr_t          argptr(int, char**, int);
+int             argptr(int, char**, int);
 int             argstr(int, char**);
-addr_t          argaddr(int, addr_t*);
+int             argaddr(int, addr_t*);
 int             fetchaddr(addr_t, addr_t*);
 int             fetchstr(addr_t, char**);
 int             fetchint(addr_t, int*);
@@ -178,18 +179,18 @@ void            uartputc(int);
 // vm.c
 void            seginit(void);
 void            kvmalloc(void);
-pde_t*          setupkvm(void);
-char*           uva2ka(pde_t*, char*);
-addr_t          allocuvm(pde_t*, uint64, uint64);
-addr_t          deallocuvm(pde_t*, uint64, uint64);
-void            freevm(pde_t*);
-void            inituvm(pde_t*, char*, uint);
-int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
-pde_t*          copyuvm(pde_t*, uint);
+pml4e_t*        setupkvm(void);
+char*           uva2ka(pml4e_t*, char*);
+addr_t          allocuvm(pml4e_t*, uint64, uint64);
+addr_t          deallocuvm(pml4e_t*, uint64, uint64);
+void            freevm(pml4e_t*);
+void            inituvm(pml4e_t*, char*, uint);
+int             loaduvm(pml4e_t*, char*, struct inode*, uint, uint);
+pde_t*          copyuvm(pml4e_t*, uint);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
-int             copyout(pde_t*, addr_t, void*, uint64);
-void            clearpteu(pde_t *pgdir, char *uva);
+int             copyout(pml4e_t*, addr_t, void*, uint64);
+void            clearpteu(pml4e_t *pgdir, char *uva);
 
 // procfs.c
 void            procfsinit(char * mountpoint);
